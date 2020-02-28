@@ -13,8 +13,7 @@ from os import path
 
 def format_prediction(boxes, labels, probabilities):
     d = {
-        "status": "ok",
-        "predictions": [],
+        "results": [],
     }
     
     if (boxes != 'null'):
@@ -27,9 +26,9 @@ def format_prediction(boxes, labels, probabilities):
                                {"Coordinates 2": str(boxes[i][1])}],
                 },
             }
-            d["predictions"].append(pred)
+            d["results"].append(pred)
     else:
-        d["predictions"].append("No classes found with the given threshold. Reduce threshold.")
+        d["results"].append("No classes found with the given threshold. Reduce threshold.")
     
     return d
 

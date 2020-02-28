@@ -2,7 +2,7 @@
 """
 Model description
 """
-from webargs import fields
+from webargs import fields, validate
 import argparse
 import pkg_resources
 import os
@@ -293,6 +293,13 @@ def get_predict_args():
             missing= 2,  
             description="Thickness of the text in pixels (Positive number starting from 1)."  
         ),
+        
+        "accept" : fields.Str(
+            require=False,
+            description="Returns an image or a json with the box coordinates.",
+            missing='image/png',
+            validate=validate.OneOf(['image/png', 'application/json'])),
+
      }
     
 def predict_file(**args):
@@ -356,24 +363,29 @@ def predict(**args):
         pred_score = 'null'
         
     if (pred_t!='null'):
-        #PDF Format:    
-        #Drawing the boxes around the objects in the images + putting text + probabilities. 
-        img_cv = cv2.imread(other_path) # Read image with cv2
-        for i in range(len(pred_boxes)):
-            cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
-                          thickness= int(args['box_thickness']))  # Draws rectangle.
-            cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
-                    cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
-        class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
-        cv2.imwrite(class_path,img_cv)    
+        if(args['accept'] == 'image/png'):
+            
+        
+            #PDF Format:    
+            #Drawing the boxes around the objects in the images + putting text + probabilities. 
+            img_cv = cv2.imread(other_path) # Read image with cv2
+            for i in range(len(pred_boxes)):
+                cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
+                              thickness= int(args['box_thickness']))  # Draws rectangle.
+                cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
+                        cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
+            class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
+            cv2.imwrite(class_path,img_cv)    
     
-        #Merge original image with the classified one.
-        result_image = resfiles.merge_images()
+            #Merge original image with the classified one.
+            result_image = resfiles.merge_images()
 
-        #Create the PDF file.
-        result_pdf = resfiles.create_pdf(result_image, pred_boxes, pred_class, pred_score)
-
-    message = mutils.format_prediction(pred_boxes,pred_class, pred_score)  
+            #Create the PDF file.
+            result_pdf = resfiles.create_pdf(result_image, pred_boxes, pred_class, pred_score)
+            
+            message = open(class_path, 'rb')
+        else:
+            message = mutils.format_prediction(pred_boxes,pred_class, pred_score)  
     return message
 
 def main():
