@@ -114,6 +114,12 @@ def get_train_args():
             missing= 0.1,  
             description= "Multiplicative factor of learning rate decay. Default: 0.1." 
         ),
+        
+        "upload_model": fields.Str(
+            required=False,  
+            missing= False,  
+            description= "Set to True if the model and class names should be uploaded to nextcloud." 
+        ),
     }
 
 def get_model_instance_segmentation(num_classes):
@@ -144,9 +150,9 @@ def get_transform(train):
     return T.Compose(transforms)
 
 
-from flaat import Flaat
-flaat = Flaat()
-@flaat.login_required()
+#from flaat import Flaat
+#flaat = Flaat()
+#@flaat.login_required()
 def train(**args):
     #download dataset if it doens't exist.
     mdata.download_dataset()
@@ -232,18 +238,21 @@ def train(**args):
     run_results = "Done."
     model_path = '{0}/{1}.pt'.format(*nums)
     torch.save(model.state_dict(), model_path)
-    print("Model saved.")
+    print("Model saved locally.")
     
-    #copy model weigths, classes to nextcloud.
-    dest_dir = cfg.REMOTE_MODELS_DIR
-    print("[INFO] Upload %s to %s" % (model_path, dest_dir))
+    if (args['upload_model'] == 'True'):
+        #copy model weigths, classes to nextcloud.
+        dest_dir = cfg.REMOTE_MODELS_DIR
+        print("[INFO] Upload %s to %s" % (model_path, dest_dir))
     
-    #uploading class names to nextcloud.
-    mutils.upload_model(cat_file)
+        #uploading class names to nextcloud.
+        mutils.upload_model(cat_file)
     
-    #uploading weights to nextcloud.
-    mutils.upload_model(model_path)
+        #uploading weights to nextcloud.
+        mutils.upload_model(model_path)
+        print("Model uploaded.")
     
+    print("Finished training.")
     return run_results
 
 def get_predict_args():
