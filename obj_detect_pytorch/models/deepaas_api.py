@@ -285,7 +285,7 @@ def get_predict_args():
         "text_size": fields.Str(
             required=False,  
             missing= 1 , 
-            description="Size of the text in pixels (Positive number starting from 1)."  
+            description="Size of the text in pixels (Positive number starting from 1, for no text value is 0)."  
         ),
         
         "text_thickness": fields.Str(
@@ -305,6 +305,7 @@ def get_predict_args():
 def predict_file(**args):
     message = 'Not implemented in the model (predict_file)'
     return message
+
  
 def predict(**args): 
     #Download weight files and model from nextcloud if necessary.
@@ -338,10 +339,14 @@ def predict(**args):
     #tranform to tensor.
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()]) 
     
-    #reading the image and saving it.
-    threshold= float(args['threshold'])
-    thefile= args['files']
-    img1 = Image.open(thefile.filename)  
+    try:
+        #reading the image and saving it.
+        threshold= float(args['threshold'])
+        thefile= args['files']
+        img1 = Image.open(thefile.filename) 
+    except Exception:
+                raise ValueError("Failed parsing the input values. Check if the inputs meet the conditions.")
+        
     other_path = '{}/Input_image_patch.png'.format(cfg.DATA_DIR)
     img1.save(other_path)
     
@@ -364,19 +369,21 @@ def predict(**args):
         
     if (pred_t!='null'):
         if(args['accept'] == 'image/png'):
-            
-        
             #PDF Format:    
             #Drawing the boxes around the objects in the images + putting text + probabilities. 
             img_cv = cv2.imread(other_path) # Read image with cv2
-            for i in range(len(pred_boxes)):
-                cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
-                              thickness= int(args['box_thickness']))  # Draws rectangle.
-                cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
-                        cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
-            class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
-            cv2.imwrite(class_path,img_cv)    
-    
+            try:
+                for i in range(len(pred_boxes)):
+                    cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
+                                  thickness= int(args['box_thickness']))  # Draws rectangle.
+                    cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
+                            cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
+                class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
+                cv2.imwrite(class_path,img_cv)    
+            
+            except Exception:
+                raise ValueError("Failed parsing the input values. Check if the inputs meet the conditions.")
+                
             #Merge original image with the classified one.
             result_image = resfiles.merge_images()
 
