@@ -15,6 +15,7 @@ DATASET_DIR = path.join(BASE_DIR,'obj_detect_pytorch/dataset/') # Location of th
 
 MODEL_DIR = path.join(BASE_DIR,'models') # Location of model data
 
+#Change this to your remote folder path
 Obj_det_RemoteSpace = 'rshare:/Datasets/obj_detec_pytorch/'
 obj_det_ImageDataDir = 'data/Images/'
 obj_det_MaskDataDir = 'data/Masks/'
@@ -79,6 +80,7 @@ train_args = {
         "upload_model": fields.Str(
             required=False,  
             missing= False,  
+            enum=[True, False],
             description= "Set to True if the model and class names should be uploaded to nextcloud." 
         ),
     }

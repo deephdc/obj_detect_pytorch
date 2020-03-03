@@ -51,6 +51,10 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq):
 
         metric_logger.update(loss=losses_reduced, **loss_dict_reduced)
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
+        
+    return metric_logger
+    
+
 
 
 def _get_iou_types(model):
@@ -98,7 +102,7 @@ def evaluate(model, data_loader, device):
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger)
+    print("[INFO] Averaged stats:", metric_logger)
     coco_evaluator.synchronize_between_processes()
 
     # accumulate predictions from all images

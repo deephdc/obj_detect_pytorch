@@ -20,7 +20,7 @@ def download_dataset():
         masks_path = os.path.join(cfg.DATASET_DIR, "Masks")
         
         if not os.path.exists(images_path) and not os.path.exists(masks_path) :
-            print('No data found, downloading data...')
+            print('[INFO] No data found, downloading data...')
             # from "rshare" remote storage into the container
             command = (['rclone', 'copy', '--progress', cfg.REMOTE_IMG_DATA_DIR, images_path])
             result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -28,9 +28,9 @@ def download_dataset():
             command = (['rclone', 'copy', '--progress', cfg.REMOTE_MASK_DATA_DIR , masks_path])
             result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output, error = result.communicate()
-            print('Finished.')
+            print('[INFO] Finished.')
         else:
-            print("Images and masks folders already exist.")
+            print("[INFO] Images and masks folders already exist.")
             
     except OSError as e:
         output, error = None, e

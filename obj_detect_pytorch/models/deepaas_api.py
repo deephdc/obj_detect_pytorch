@@ -7,6 +7,7 @@ import pkg_resources
 import os
 import torch
 import cv2
+from time import time
 from PIL import Image
 from fpdf import FPDF
 
@@ -26,7 +27,6 @@ import obj_detect_pytorch.models.utils as utils2
 
 def get_metadata():
     #Metadata of the model:
-    #Gets the models trained with the NN.
     models_names = mutils.get_models()
     module = __name__.split('.', 1)
     pkg = pkg_resources.get_distribution(module[0])  
@@ -56,12 +56,6 @@ def warm():
     for loading it into memory, perform any kind of preliminary checks, etc.
     """
 
-###
-# Uncomment the following two lines
-# if you allow only authorized people to do training
-###
-#import flaat
-#@flaat.login_required()
 def get_train_args():
     return cfg.train_args
     
@@ -93,17 +87,21 @@ def get_transform(train):
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
 
-
+###
+# Uncomment the following two lines
+# if you allow only authorized people to do training
+###
 #from flaat import Flaat
 #flaat = Flaat()
 #@flaat.login_required()
+
 def train(**args):
     #download dataset if it doens't exist.
     mdata.download_dataset()
     
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device:', device)
+    print('[INFO] Using device:', device)
     torch.cuda.empty_cache()
     
     #saving names of the classes
@@ -115,7 +113,7 @@ def train(**args):
     
     # check if the number of classes coincides with the number of names
     if len(classes)!= num_classes:
-        print('The number of classes is not the same as the number of names given.')
+        print('[ERROR] The number of classes is not the same as the number of names given.')
         run_results = "Error."
         return run_results
     
@@ -156,19 +154,28 @@ def train(**args):
     #let's train it for num_epochs
     num_epochs = int(args['num_epochs'])
 
+    data_size = len(data_loader) - 1
+    test_size = len(data_loader_test) - 1
+    
+    t0 = time()
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        metrics = train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         # update the learning rate
         lr_scheduler.step()
         # evaluate on the test dataset
-        print('Evaluating model...')
+        print('[INFO] Evaluating model...')
         evaluate(model, data_loader_test, device=device)
+    t1 = time()
+    loss = str(metrics.__getattr__('loss'))
+    loss_classifier =  str(metrics.__getattr__('loss_classifier'))
+    loss_box = str(metrics.__getattr__('loss_box_reg'))
+    loss_mask = str(metrics.__getattr__('loss_mask'))
 
-    #train_results = mutils.format_train(network, test_accuracy, num_epochs,
-    #                                    data_size, time_prepare, mn, std)
- 
-    print("Training done.")
+    train_results = mutils.format_train(loss, loss_classifier, loss_box, loss_mask, num_epochs, 
+                                       t1-t0,data_size, test_size)
+
+    print("[INFO] Training done.")
     
     #writing file with the classes
     nums = [cfg.MODEL_DIR, args['model_name']]
@@ -179,12 +186,11 @@ def train(**args):
             filehandle.write('%s\n' % listitem)   
 
     #saving model's parameters
-    run_results = "Done."
     model_path = '{0}/{1}.pt'.format(*nums)
     torch.save(model.state_dict(), model_path)
-    print("Model saved locally.")
+    print("[INFO] Model saved locally.")
     
-    if (args['upload_model'] == 'True'):
+    if (args['upload_model'] == 'true'):
         #copy model weigths, classes to nextcloud.
         dest_dir = cfg.REMOTE_MODELS_DIR
         print("[INFO] Upload %s to %s" % (model_path, dest_dir))
@@ -194,10 +200,10 @@ def train(**args):
     
         #uploading weights to nextcloud.
         mutils.upload_model(model_path)
-        print("Model uploaded.")
+        print("[INFO] Model uploaded.")
     
-    print("Finished training.")
-    return run_results
+    print("[INFO] Finished training.")
+    return train_results
 
 def get_predict_args():
     return cfg.predict_args
