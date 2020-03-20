@@ -2,6 +2,7 @@
 Sphinx
 python-dotenv>=0.5.1
 fpdf==1.7.2
+--install-option="--no-cython-compile" Cython
 opencv-python>=4.1.1.26
 pandas
 pycocotools==2.0.0
