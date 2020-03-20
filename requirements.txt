@@ -2,8 +2,10 @@
 Sphinx
 python-dotenv>=0.5.1
 fpdf==1.7.2
-matplotlib #3.1.1
-opencv-python #4.1.1.26
+#matplotlib #3.1.1
+matplotlib>=2.0.0
+opencv-python==3.2.0.6
+#opencv-python #4.1.1.26
 pandas
 cython>=0.29.0 --global-option="--no-cython-compile"
 pycocotools==2.0.0
