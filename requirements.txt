@@ -8,5 +8,5 @@ fpdf==1.7.2
 matplotlib==3.1.1
 pandas
 cython>=0.29.0 --install-option="--no-cython-compile"
-pycocotools==2.0.0
+#pycocotools==2.0.0
 
