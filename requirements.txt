@@ -7,5 +7,5 @@ opencv-python==3.2.0.6
 fpdf==1.7.2
 matplotlib==3.1.1
 pandas
-cython --install-option="--no-cython-compile"
+cython #--install-option="--no-cython-compile"
 pycocotools==2.0.0
