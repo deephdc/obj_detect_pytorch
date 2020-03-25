@@ -29,15 +29,6 @@ pipeline {
             }
             post {
                 always {
-                    warnings canComputeNew: false,
-                             canResolveRelativePaths: false,
-                             defaultEncoding: '',
-                             excludePattern: '',
-                             healthy: '',
-                             includePattern: '',
-                             messagesPattern: '',
-                             parserConfigurations: [[parserName: 'PYLint', pattern: '**/flake8.log']],
-                             unHealthy: ''
                     WarningsReport('Pep8')
                 }
             }
