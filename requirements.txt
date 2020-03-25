@@ -8,4 +8,4 @@ fpdf==1.7.2
 matplotlib==3.1.1
 pandas
 
-git+git://github.com/philferriere/cocoapi.git#subdirectory=PythonAPI #pycocotools
+#pycocotools==2.0.0 
