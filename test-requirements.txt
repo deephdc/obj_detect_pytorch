@@ -11,5 +11,7 @@ testtools>=1.4.0
 pytest
 pytest-cov
 
-deepaas
-flaat
+torch
+torchvision
+
+aiohttp
