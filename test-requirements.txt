@@ -12,3 +12,6 @@ pytest
 pytest-cov
 
 torch
+torchvision
+
+aiohttp
