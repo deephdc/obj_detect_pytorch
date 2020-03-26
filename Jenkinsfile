@@ -6,7 +6,8 @@ def job_result_url = ''
 
 pipeline {
     agent {
-        label 'python3.6'
+        //label 'python3.6'
+        docker { image 'deephdc/deep-oc-obj_detect_pytorch:cpu' }
     }
 
     environment {
