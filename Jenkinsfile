@@ -26,6 +26,7 @@ pipeline {
 
         stage('Style analysis') {
             steps {
+                sh "pip3 install cython"
                 ToxEnvRun('pep8')
             }
             post {
