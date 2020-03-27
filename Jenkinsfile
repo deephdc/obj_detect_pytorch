@@ -7,7 +7,7 @@ def job_result_url = ''
 pipeline {
     agent {
         //label 'python3.6'
-        docker { image 'silked/jenkins_test:first' }
+        docker { image 'silked/jenkins_test:second' }
     }
 
     environment {
