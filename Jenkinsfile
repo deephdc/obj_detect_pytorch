@@ -7,7 +7,7 @@ def job_result_url = ''
 pipeline {
     agent {
         //label 'python3.6'
-        docker { image 'deephdc/deep-oc-obj_detect_pytorch:cpu' }
+        docker { image 'silked/jenkins_test:first' }
     }
 
     environment {
