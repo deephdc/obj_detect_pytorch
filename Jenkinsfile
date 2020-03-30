@@ -7,7 +7,7 @@ def job_result_url = ''
 pipeline {
     agent {
         //label 'python3.6'
-        docker { image 'silked/jenkins_test:first' }
+        docker { image 'deephdc/ci_cd-obj_detect_pytorch' }
     }
 
     environment {
@@ -31,6 +31,19 @@ pipeline {
             post {
                 always {
                     WarningsReport('Pep8')
+                }
+            }
+        }
+
+        stage('Unit testing coverage') {
+            steps {
+                ToxEnvRun('cover')
+                ToxEnvRun('cobertura')
+            }
+            post {
+                success {
+                    HTMLReport('cover', 'index.html', 'coverage.py report')
+                    CoberturaReport('**/coverage.xml')
                 }
             }
         }
