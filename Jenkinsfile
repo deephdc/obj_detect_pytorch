@@ -76,7 +76,7 @@ pipeline {
             }
             post {
                always {
-                    HTMLReport("/tmp/bandit", 'index.html', 'Bandit report')
+                    HTMLReport("tmp/bandit", 'index.html', 'Bandit report')
                 }
             }
         }
