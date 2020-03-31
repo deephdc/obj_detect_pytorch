@@ -4,10 +4,15 @@
 
 def job_result_url = ''
 
+ci_cd_image = 'deephdc/ci_cd-obj_detect_pytorch'
+if (env.BRANCH_NAME == 'test') {
+    ci_cd_image = 'deephdc/ci_cd-obj_detect_pytorch:test'
+}
+
 pipeline {
     agent {
         //label 'python3.6'
-        docker { image 'deephdc/ci_cd-obj_detect_pytorch:${env.BRANCH_NAME}' }
+        docker { image "${ci_cd_image}" }
     }
 
     environment {
