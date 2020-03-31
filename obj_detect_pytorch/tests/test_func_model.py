@@ -28,7 +28,7 @@ class TestModelFunc(unittest.TestCase):
         """
         Test that predict() returns right prediction values.
         """
-        prob = self.pred.get('predictions')[0].get('probability')
+        prob = self.pred.get('results')[0].get('probability')
         
         print("prob bear: ", prob)
         assert float(prob) >= self.prob
