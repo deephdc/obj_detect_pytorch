@@ -7,7 +7,7 @@ def job_result_url = ''
 pipeline {
     agent {
         //label 'python3.6'
-        docker { image 'deephdc/ci_cd-obj_detect_pytorch' }
+        docker { image 'deephdc/ci_cd-obj_detect_pytorch:${env.BRANCH_NAME}' }
     }
 
     environment {
@@ -49,9 +49,6 @@ pipeline {
         }
 
         stage('Metrics gathering') {
-            agent {
-                label 'sloc'
-            }
             steps {
                 checkout scm
                 SLOCRun()
