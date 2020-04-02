@@ -13,8 +13,7 @@ from os import path
 
 def format_prediction(boxes, labels, probabilities):
     d = {
-        "status": "ok",
-        "predictions": [],
+        "results": [],
     }
     
     if (boxes != 'null'):
@@ -27,28 +26,27 @@ def format_prediction(boxes, labels, probabilities):
                                {"Coordinates 2": str(boxes[i][1])}],
                 },
             }
-            d["predictions"].append(pred)
+            d["results"].append(pred)
     else:
-        d["predictions"].append("No classes found with the given threshold. Reduce threshold.")
+        d["results"].append("No classes found with the given threshold. Reduce threshold.")
     
     return d
 
-def format_train(network, accuracy, nepochs, data_size, 
-                 time_prepare, mn_train, std_train):
-
+def format_train(loss, classifier_loss, box_loss, mask_loss, nepochs,
+                 time_prepare, data_size, test_size):
 
     train_info = {
-        "network": network,
-        "test accuracy": accuracy,
+        "network": 'Faster R-CNN.',
+        "loss": {
+                    "total loss": loss,
+                    "classifier loss":classifier_loss,
+                    "box loss":box_loss,
+                    "mask loss": mask_loss
+                }, 
         "n epochs": nepochs,
         "train set (images)": data_size,
-        "validation set (images)": data_size,
-        "test set (images)": data_size,
-        "time": {
-                "time to prepare": time_prepare,
-                "mean per epoch (s)": mn_train,
-                "std (s)": std_train,
-                },
+        "test set (images)": test_size,
+        "total time":  time_prepare
     }
 
     return train_info
@@ -98,7 +96,7 @@ def download_model(name):
             remote_nums = [cfg.REMOTE_MODELS_DIR, name]
             remote_model_path = '{0}/{1}.pt'.format(*remote_nums)
             remote_cat_path = '{0}/categories_{1}.txt'.format(*remote_nums)
-            print('Model not found, downloading model...')
+            print('[INFO] Model not found, downloading model...')
             # from "rshare" remote storage into the container
             command = (['rclone', 'copy', '--progress', remote_model_path, cfg.MODEL_DIR])
             result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -106,9 +104,9 @@ def download_model(name):
             command = (['rclone', 'copy', '--progress', remote_cat_path, cfg.MODEL_DIR])
             result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output, error = result.communicate()
-            print('Finished.')
+            print('[INFO] Finished.')
         else:
-            print("Model found.")
+            print("[INFO] Model found.")
             
     except OSError as e:
         output, error = None, e

@@ -20,7 +20,7 @@ class TestModelMethods(unittest.TestCase):
         """
         self.assertEqual(self.meta['Name'].replace('-','').replace('_',''),
                         'obj_detect_pytorch'.replace('-','').replace('_',''))
-        self.assertEqual(self.meta['Author'], 'Silke Donayre')
+        self.assertEqual(self.meta['Author'], 'Silke Donayre (KIT)')
         self.assertEqual(self.meta['Author-email'], 'silke.holtz@student.kit.edu')
         
     #def test_model_variables(self):# For training.

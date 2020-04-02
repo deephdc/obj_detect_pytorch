@@ -1,12 +1,18 @@
 #!/usr/bin/groovy
 
-@Library(['github.com/indigo-dc/jenkins-pipeline-library@1.2.3']) _
+@Library(['github.com/indigo-dc/jenkins-pipeline-library@release/1.4.0']) _
 
 def job_result_url = ''
 
+ci_cd_image = 'deephdc/ci_cd-obj_detect_pytorch'
+if (env.BRANCH_NAME == 'test') {
+    ci_cd_image = 'deephdc/ci_cd-obj_detect_pytorch:test'
+}
+
 pipeline {
     agent {
-        label 'python'
+        //label 'python3.6'
+        docker { image "${ci_cd_image}" }
     }
 
     environment {
@@ -23,21 +29,13 @@ pipeline {
             }
         }
 
-        stage('Style analysis: PEP8') {
+        stage('Style analysis') {
             steps {
                 ToxEnvRun('pep8')
             }
             post {
                 always {
-                    warnings canComputeNew: false,
-                             canResolveRelativePaths: false,
-                             defaultEncoding: '',
-                             excludePattern: '',
-                             healthy: '',
-                             includePattern: '',
-                             messagesPattern: '',
-                             parserConfigurations: [[parserName: 'PYLint', pattern: '**/flake8.log']],
-                             unHealthy: ''
+                    WarningsReport('Pep8')
                 }
             }
         }
@@ -56,9 +54,6 @@ pipeline {
         }
 
         stage('Metrics gathering') {
-            agent {
-                label 'sloc'
-            }
             steps {
                 checkout scm
                 SLOCRun()
@@ -77,11 +72,11 @@ pipeline {
                     if (currentBuild.result == 'FAILURE') {
                         currentBuild.result = 'UNSTABLE'
                     }
-               }
+              }
             }
             post {
                always {
-                    HTMLReport("/tmp/bandit", 'index.html', 'Bandit report')
+                    HTMLReport("tmp/bandit", 'index.html', 'Bandit report')
                 }
             }
         }

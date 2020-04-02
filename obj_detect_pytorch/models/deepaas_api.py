@@ -2,30 +2,31 @@
 """
 Model description
 """
-from webargs import fields
 import argparse
 import pkg_resources
 import os
-import obj_detect_pytorch.config as cfg
-import torchvision
-from PIL import Image
-import obj_detect_pytorch.models.model_utils as mutils
-import obj_detect_pytorch.models.create_resfiles as resfiles 
-import obj_detect_pytorch.dataset.make_dataset as mdata
-from fpdf import FPDF
+import torch
 import cv2
+from time import time
+from PIL import Image
+from fpdf import FPDF
+
+import torchvision
 from torchvision import transforms, utils
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
-import torch
+
+import obj_detect_pytorch.models.model_utils as mutils
+import obj_detect_pytorch.models.create_resfiles as resfiles 
+import obj_detect_pytorch.dataset.make_dataset as mdata
 import obj_detect_pytorch.models.transform as T
+import obj_detect_pytorch.config as cfg
 from obj_detect_pytorch.models.engine import train_one_epoch, evaluate
 import obj_detect_pytorch.models.utils as utils2
 
 
 def get_metadata():
     #Metadata of the model:
-    #Gets the models trained with the NN.
     models_names = mutils.get_models()
     module = __name__.split('.', 1)
     pkg = pkg_resources.get_distribution(module[0])  
@@ -55,66 +56,9 @@ def warm():
     for loading it into memory, perform any kind of preliminary checks, etc.
     """
 
-###
-# Uncomment the following two lines
-# if you allow only authorized people to do training
-###
-#import flaat
-#@flaat.login_required()
 def get_train_args():
-    #Training arguments:
-    return {
-        "model_name": fields.Str(
-            required=True,  # force the user to define the value
-            description= "Name of the model without blank spaces. If another model with the same name exists it will be overwritten."  # help string
-        ),
-        
-        "num_classes": fields.Str(
-            required = True,  
-            description= "Number of classes in the dataset. Note: It must be #classes + 1 since background is needed. Integer."
-        ),
-        
-        "class_names": fields.Str(
-            required=True,  
-            description= "Names of the classes in the dataset. A background class must exist. The names must be separated by a coma, e.g. background,class1,class2."  
-        ),
-        
-        "num_epochs": fields.Str(
-            required=False,
-            missing= 1,
-            description= "Number of training epochs for the SGD." 
-        ),
-        
-        "learning_rate": fields.Str(
-            required=False, 
-            missing= 0.005, 
-            description= "Learning rate."  
-        ),
-        
-        "momentum": fields.Str(
-            required=False,  
-            missing= 0.9, 
-            description= "Momentum factor. Default: 0. More information: https://pytorch.org/docs/stable/optim.html"  
-        ),
-        
-        "weight_decay": fields.Str(
-            required=False,  
-            missing= 0.0005,  
-            description= "Weight decay (L2 penalty). Default: 0." 
-        ),
-        
-        "step_size": fields.Str(
-            required=False,  
-            missing= 3,  
-            description= "Period of learning rate decay, must be an integer." 
-        ),
-        
-        "gamma": fields.Str(
-            required=False,  
-            missing= 0.1,  
-            description= "Multiplicative factor of learning rate decay. Default: 0.1." 
-        ),
-    }
+    return cfg.train_args
+    
 
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
@@ -143,17 +87,21 @@ def get_transform(train):
         transforms.append(T.RandomHorizontalFlip(0.5))
     return T.Compose(transforms)
 
+###
+# Uncomment the following two lines
+# if you allow only authorized people to do training
+###
+#from flaat import Flaat
+#flaat = Flaat()
+#@flaat.login_required()
 
-from flaat import Flaat
-flaat = Flaat()
-@flaat.login_required()
 def train(**args):
     #download dataset if it doens't exist.
     mdata.download_dataset()
     
     # train on the GPU or on the CPU, if a GPU is not available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print('Using device:', device)
+    print('[INFO] Using device:', device)
     torch.cuda.empty_cache()
     
     #saving names of the classes
@@ -165,7 +113,7 @@ def train(**args):
     
     # check if the number of classes coincides with the number of names
     if len(classes)!= num_classes:
-        print('The number of classes is not the same as the number of names given.')
+        print('[ERROR] The number of classes is not the same as the number of names given.')
         run_results = "Error."
         return run_results
     
@@ -206,19 +154,28 @@ def train(**args):
     #let's train it for num_epochs
     num_epochs = int(args['num_epochs'])
 
+    data_size = len(data_loader) - 1
+    test_size = len(data_loader_test) - 1
+    
+    t0 = time()
     for epoch in range(num_epochs):
         # train for one epoch, printing every 10 iterations
-        train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+        metrics = train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
         # update the learning rate
         lr_scheduler.step()
         # evaluate on the test dataset
-        print('Evaluating model...')
+        print('[INFO] Evaluating model...')
         evaluate(model, data_loader_test, device=device)
+    t1 = time()
+    loss = str(metrics.__getattr__('loss'))
+    loss_classifier =  str(metrics.__getattr__('loss_classifier'))
+    loss_box = str(metrics.__getattr__('loss_box_reg'))
+    loss_mask = str(metrics.__getattr__('loss_mask'))
 
-    #train_results = mutils.format_train(network, test_accuracy, num_epochs,
-    #                                    data_size, time_prepare, mn, std)
- 
-    print("Training done.")
+    train_results = mutils.format_train(loss, loss_classifier, loss_box, loss_mask, num_epochs, 
+                                       t1-t0,data_size, test_size)
+
+    print("[INFO] Training done.")
     
     #writing file with the classes
     nums = [cfg.MODEL_DIR, args['model_name']]
@@ -229,66 +186,32 @@ def train(**args):
             filehandle.write('%s\n' % listitem)   
 
     #saving model's parameters
-    run_results = "Done."
     model_path = '{0}/{1}.pt'.format(*nums)
     torch.save(model.state_dict(), model_path)
-    print("Model saved.")
+    print("[INFO] Model saved locally.")
     
-    #copy model weigths, classes to nextcloud.
-    dest_dir = cfg.REMOTE_MODELS_DIR
-    print("[INFO] Upload %s to %s" % (model_path, dest_dir))
+    if (args['upload_model'] == 'true'):
+        #copy model weigths, classes to nextcloud.
+        dest_dir = cfg.REMOTE_MODELS_DIR
+        print("[INFO] Upload %s to %s" % (model_path, dest_dir))
     
-    #uploading class names to nextcloud.
-    mutils.upload_model(cat_file)
+        #uploading class names to nextcloud.
+        mutils.upload_model(cat_file)
     
-    #uploading weights to nextcloud.
-    mutils.upload_model(model_path)
+        #uploading weights to nextcloud.
+        mutils.upload_model(model_path)
+        print("[INFO] Model uploaded.")
     
-    return run_results
+    print("[INFO] Finished training.")
+    return train_results
 
 def get_predict_args():
-    #Prediction arguments:
-    return {
-        "model_name": fields.Str(
-            required=False,  # force the user to define the value
-            missing="COCO",  # default value to use
-            description= "Name of the model. To see the available models please run the get_metadata function."  # help string
-        ),
-
-        "files": fields.Field(
-            description="Data file to perform inference on.",
-            required=True,
-            type="file",
-            location="form"),
-
-        "threshold": fields.Str(
-            required=False, 
-            missing= 0.8,  
-            description="Threshold of probability (0.0 - 1.0). Shows the predictions above the threshold."  
-        ),
-        
-        "box_thickness": fields.Str(
-            required=False,
-            missing= 2, 
-            description="Thickness of the box in pixels (Positive number starting from 1)."  
-        ),
-        
-        "text_size": fields.Str(
-            required=False,  
-            missing= 1 , 
-            description="Size of the text in pixels (Positive number starting from 1)."  
-        ),
-        
-        "text_thickness": fields.Str(
-            required=False,  
-            missing= 2,  
-            description="Thickness of the text in pixels (Positive number starting from 1)."  
-        ),
-     }
+    return cfg.predict_args
     
 def predict_file(**args):
     message = 'Not implemented in the model (predict_file)'
     return message
+
  
 def predict(**args): 
     #Download weight files and model from nextcloud if necessary.
@@ -322,10 +245,14 @@ def predict(**args):
     #tranform to tensor.
     transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor()]) 
     
-    #reading the image and saving it.
-    threshold= float(args['threshold'])
-    thefile= args['files']
-    img1 = Image.open(thefile.filename)  
+    try:
+        #reading the image and saving it.
+        threshold= float(args['threshold'])
+        thefile= args['files']
+        img1 = Image.open(thefile.filename) 
+    except Exception:
+                raise ValueError("Failed parsing the input values. Check if the inputs meet the conditions.")
+        
     other_path = '{}/Input_image_patch.png'.format(cfg.DATA_DIR)
     img1.save(other_path)
     
@@ -347,24 +274,31 @@ def predict(**args):
         pred_score = 'null'
         
     if (pred_t!='null'):
-        #PDF Format:    
-        #Drawing the boxes around the objects in the images + putting text + probabilities. 
-        img_cv = cv2.imread(other_path) # Read image with cv2
-        for i in range(len(pred_boxes)):
-            cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
-                          thickness= int(args['box_thickness']))  # Draws rectangle.
-            cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
-                    cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
-        class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
-        cv2.imwrite(class_path,img_cv)    
-    
-        #Merge original image with the classified one.
-        result_image = resfiles.merge_images()
+        if(args['accept'] == 'image/png'):
+            #PDF Format:    
+            #Drawing the boxes around the objects in the images + putting text + probabilities. 
+            img_cv = cv2.imread(other_path) # Read image with cv2
+            try:
+                for i in range(len(pred_boxes)):
+                    cv2.rectangle(img_cv, pred_boxes[i][0], pred_boxes[i][1], color= (124,252,0) , 
+                                  thickness= int(args['box_thickness']))  # Draws rectangle.
+                    cv2.putText(img_cv,str(pred_class[i]) + " " + str(float("{0:.4f}".format(pred_score[i]))), pred_boxes[i][0],
+                            cv2.FONT_HERSHEY_SIMPLEX, int(args['text_size']), (124,252,0),thickness= int(args['text_thickness'])) 
+                class_path = '{}/Classification_map.png'.format(cfg.DATA_DIR)
+                cv2.imwrite(class_path,img_cv)    
+            
+            except Exception:
+                raise ValueError("Failed parsing the input values. Check if the inputs meet the conditions.")
+                
+            #Merge original image with the classified one.
+            result_image = resfiles.merge_images()
 
-        #Create the PDF file.
-        result_pdf = resfiles.create_pdf(result_image, pred_boxes, pred_class, pred_score)
-
-    message = mutils.format_prediction(pred_boxes,pred_class, pred_score)  
+            #Create the PDF file.
+            result_pdf = resfiles.create_pdf(result_image, pred_boxes, pred_class, pred_score)
+            
+            message = open(class_path, 'rb')
+        else:
+            message = mutils.format_prediction(pred_boxes,pred_class, pred_score)  
     return message
 
 def main():
