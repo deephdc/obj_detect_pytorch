@@ -1,9 +1,16 @@
 # external requirements
+
 Sphinx
 python-dotenv>=0.5.1
-fpdf==1.7.2
+
+Pillow
 opencv-python>=4.1.1.26
-pandas
-pycocotools==2.0.0
+fpdf==1.7.2
 matplotlib==3.1.1
-deepaas>=1.0.0
+cython
+pandas
+# Note: pycocotools has buggy installation: 
+# cython and numpy have to be installed manually before pycocotools
+pycocotools==2.0.0 
+deepaas>=1.0.1
+flaat>=0.5.3
