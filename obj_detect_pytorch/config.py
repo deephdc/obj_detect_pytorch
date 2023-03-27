@@ -2,9 +2,16 @@
 """
    Module to define CONSTANTS used across the project
 """
-
+import os
 from os import path
 from webargs import fields, validate
+
+import logging
+
+# logging level accross various scripts
+# options: DEBUG(10), INFO(20), WARNING(30), ERROR(40), CRITICAL(50)
+env_log_level = os.getenv('OBJ_DETECT_LOG_LEVEL', 'INFO')
+log_level = getattr(logging, env_log_level.upper(), 20) # INFO = 20
 
 # identify basedir for the package
 BASE_DIR = path.dirname(path.normpath(path.dirname(__file__)))

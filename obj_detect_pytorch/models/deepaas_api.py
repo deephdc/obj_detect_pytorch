@@ -3,6 +3,7 @@
 Model description
 """
 import argparse
+import logging
 import pkg_resources
 import os
 import torch
@@ -24,6 +25,10 @@ import obj_detect_pytorch.config as cfg
 from obj_detect_pytorch.models.engine import train_one_epoch, evaluate
 import obj_detect_pytorch.models.utils as utils2
 
+# conigure python logger
+logger = logging.getLogger('__name__')
+logging.basicConfig(format='%(asctime)s [%(levelname)s]: %(message)s')
+logger.setLevel(cfg.log_level)
 
 def get_metadata():
     #Metadata of the model:
@@ -62,20 +67,23 @@ def get_train_args():
 
 def get_model_instance_segmentation(num_classes):
     # load an instance segmentation model pre-trained pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+    #-model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+    # if no mask available:
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
 
     # get number of input features for the classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     # replace the pre-trained head with a new one
+    logger.debug(F"[api.get_model_instance_] num_classes = {num_classes}")
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
     # now get the number of input features for the mask classifier
-    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    hidden_layer = 256
+    #-in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    #-hidden_layer = 256
     # and replace the mask predictor with a new one
-    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
-                                                       hidden_layer,
-                                                       num_classes)
+    #-model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+    #-                                                   hidden_layer,
+    #-                                                   num_classes)
 
     return model
 
@@ -170,7 +178,9 @@ def train(**args):
     loss = str(metrics.__getattr__('loss'))
     loss_classifier =  str(metrics.__getattr__('loss_classifier'))
     loss_box = str(metrics.__getattr__('loss_box_reg'))
-    loss_mask = str(metrics.__getattr__('loss_mask'))
+    #-loss_mask = str(metrics.__getattr__('loss_mask'))
+    # if masks not available:
+    loss_mask = "NaN"
 
     train_results = mutils.format_train(loss, loss_classifier, loss_box, loss_mask, num_epochs, 
                                        t1-t0,data_size, test_size)
@@ -226,7 +236,10 @@ def predict(**args):
         
         if os.path.exists(model_path):
             state_dict = torch.load(model_path)
-            model = get_model_instance_segmentation(list(state_dict["roi_heads.mask_predictor.mask_fcn_logits.bias"].size())[0])
+            logger.debug(F"state_dict: {state_dict}")
+            #-model = get_model_instance_segmentation(list(state_dict["roi_heads.mask_predictor.mask_fcn_logits.bias"].size())[0])
+            # if masks not available
+            model = get_model_instance_segmentation(list(state_dict["roi_heads.box_predictor.cls_score.bias"].size())[0])
             model.load_state_dict(state_dict)
             CATEGORIES = []
             # open file and read the content in a list
