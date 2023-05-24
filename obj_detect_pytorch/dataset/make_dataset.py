@@ -20,7 +20,7 @@ def download_dataset():
         masks_path = os.path.join(cfg.DATASET_DIR, "Masks")
         
         if not os.path.exists(images_path) and not os.path.exists(masks_path) :
-            print('[INFO] No data found, downloading data...')
+            print(F'[INFO] No data found in {cfg.DATASET_DIR}, downloading data...')
             # from "rshare" remote storage into the container
             command = (['rclone', 'copy', '--progress', cfg.REMOTE_IMG_DATA_DIR, images_path])
             result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -30,7 +30,7 @@ def download_dataset():
             output, error = result.communicate()
             print('[INFO] Finished.')
         else:
-            print("[INFO] Images and masks folders already exist.")
+            print(F"[INFO] Images and masks folders already exist in {cfg.DATASET_DIR}")
             
     except OSError as e:
         output, error = None, e
@@ -42,13 +42,13 @@ class Dataset(object):
         self.transforms = transforms
         # load all image files, sorting them to
         # ensure that they are aligned
-        self.imgs = list(sorted(os.listdir(os.path.join("obj_detect_pytorch/obj_detect_pytorch/dataset/", "Images"))))
-        self.masks = list(sorted(os.listdir(os.path.join("obj_detect_pytorch/obj_detect_pytorch/dataset/", "Masks"))))
+        self.imgs = list(sorted(os.listdir(os.path.join(cfg.DATASET_DIR, "Images"))))
+        self.masks = list(sorted(os.listdir(os.path.join(cfg.DATASET_DIR, "Masks"))))
 
     def __getitem__(self, idx):
         # load images and masks
-        img_path = os.path.join("obj_detect_pytorch/obj_detect_pytorch/dataset/", "Images", self.imgs[idx])
-        mask_path = os.path.join("obj_detect_pytorch/obj_detect_pytorch/dataset/", "Masks", self.masks[idx])
+        img_path = os.path.join(cfg.DATASET_DIR, "Images", self.imgs[idx])
+        mask_path = os.path.join(cfg.DATASET_DIR, "Masks", self.masks[idx])
         img = Image.open(img_path).convert("RGB")
         mask = Image.open(mask_path)
         mask = np.array(mask)
@@ -79,7 +79,7 @@ class Dataset(object):
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
-        #target["masks"] = masks
+        target["masks"] = masks
         target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
