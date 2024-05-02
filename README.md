@@ -1,3 +1,8 @@
+---
+# The Repository is ARCHIVED!
+### it is now maintained in https://github.com/ai4os-hub/obj-detection-torch
+---
+
 DEEP Open Catalogue: Object Detection and Classification
 ==============================
 
